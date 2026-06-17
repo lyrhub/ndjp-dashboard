@@ -842,7 +842,14 @@
 
             try {
                 const data = await apiRequest('GET', `/domains/${encodeURIComponent(subdomain)}/records`);
-                currentRecords = data.data || [];
+                // data.data 可能是：字符串(zone file)、数组、或其他结构
+                currentRecords = data.data;
+                // 如果 data 本身没有 data 字段，可能整个响应就是记录
+                if (currentRecords === undefined || currentRecords === null) {
+                    currentRecords = data.records || data;
+                }
+                console.log('Records API response:', JSON.stringify(data, null, 2));
+                console.log('currentRecords:', currentRecords);
                 renderRecords(subdomain);
             } catch (e) {
                 container.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
@@ -855,7 +862,10 @@
             // data 可能是字符串 (zone file) 或数组
             if (typeof currentRecords === 'string') {
                 // Zone file 格式 - 解析展示
-                const lines = currentRecords.split('\n').filter(l => l.trim() && !l.startsWith(';'));
+                // 格式: name TTL IN type content
+                // 或: name TTL type content
+                // 或: name type content
+                const lines = currentRecords.split('\n').filter(l => l.trim() && !l.startsWith(';') && !l.startsWith('$'));
                 if (lines.length === 0) {
                     container.innerHTML = '<div class="empty">暂无记录</div>';
                     return;
@@ -870,26 +880,54 @@
                         <th>操作</th>
                     </tr></thead><tbody>`;
 
+                const dnsTypes = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'ALIAS', 'SOA', 'CAA', 'PTR'];
+
                 for (const line of lines) {
                     const parts = line.trim().split(/\s+/);
-                    if (parts.length >= 4) {
-                        const name = parts[0];
-                        const ttl = parts[1];
-                        const type = parts.length >= 5 ? parts[3] : parts[2];
-                        const content = parts.length >= 5 ? parts.slice(4).join(' ') : parts.slice(3).join(' ');
-                        const recordType = parts.length >= 5 ? parts[3] : parts[2];
+                    if (parts.length < 3) continue;
 
-                        html += `<tr>
-                            <td><strong>${escapeHtml(name)}</strong></td>
-                            <td>${escapeHtml(ttl)}</td>
-                            <td><span class="badge badge-info">${escapeHtml(recordType)}</span></td>
-                            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(content)}</td>
-                            <td class="actions">
-                                <button class="btn btn-outline btn-sm" onclick="editRecordFromZone('${escapeJs(subdomain)}', '${escapeJs(recordType)}', '${escapeJs(name)}', '${escapeJs(content)}', '${escapeJs(ttl)}')">编辑</button>
-                                <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(recordType)}', '${escapeJs(name)}', '${escapeJs(content)}')">删除</button>
-                            </td>
-                        </tr>`;
+                    let name = '', ttl = '', type = '', content = '';
+
+                    // 尝试解析多种 zone file 格式
+                    // 格式1: name TTL IN type content...
+                    // 格式2: name TTL type content...
+                    // 格式3: name IN type content...
+                    // 格式4: name type content...
+
+                    let idx = 0;
+                    name = parts[idx++];
+
+                    // 检查下一个是否是 TTL (数字)
+                    if (idx < parts.length && /^\d+$/.test(parts[idx])) {
+                        ttl = parts[idx++];
                     }
+
+                    // 检查是否有 IN
+                    if (idx < parts.length && parts[idx].toUpperCase() === 'IN') {
+                        idx++;
+                    }
+
+                    // 下一个应该是类型
+                    if (idx < parts.length && dnsTypes.includes(parts[idx].toUpperCase())) {
+                        type = parts[idx++].toUpperCase();
+                    }
+
+                    // 剩余的都是内容
+                    content = parts.slice(idx).join(' ');
+
+                    // 如果没有解析出type，跳过此行
+                    if (!type) continue;
+
+                    html += `<tr>
+                        <td><strong>${escapeHtml(name)}</strong></td>
+                        <td>${escapeHtml(ttl || '-')}</td>
+                        <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
+                        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(content)}</td>
+                        <td class="actions">
+                            <button class="btn btn-outline btn-sm" onclick="editRecordFromZone('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}', '${escapeJs(ttl)}')">编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}')">删除</button>
+                        </td>
+                    </tr>`;
                 }
 
                 html += '</tbody></table></div>';
@@ -900,37 +938,94 @@
                     return;
                 }
 
-                let html = `<div class="table-wrapper"><table>
-                    <thead><tr>
-                        <th>名称</th>
-                        <th>类型</th>
-                        <th>内容</th>
-                        <th>TTL</th>
-                        <th>操作</th>
-                    </tr></thead><tbody>`;
+                // 数组中的元素可能是对象或字符串
+                // 如果第一个元素是字符串，当作 zone line 处理
+                if (typeof currentRecords[0] === 'string') {
+                    // 每个元素都是一条 zone 记录行
+                    const dnsTypes = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'ALIAS', 'SOA', 'CAA', 'PTR'];
 
-                for (const r of currentRecords) {
-                    const name = r.name || r.host || '-';
-                    const type = r.type || '-';
-                    const content = r.content || r.value || r.data || '-';
-                    const ttl = r.ttl || '-';
+                    let html = `<div class="table-wrapper"><table>
+                        <thead><tr>
+                            <th>名称</th>
+                            <th>TTL</th>
+                            <th>类型</th>
+                            <th>内容</th>
+                            <th>操作</th>
+                        </tr></thead><tbody>`;
 
-                    html += `<tr>
-                        <td><strong>${escapeHtml(name)}</strong></td>
-                        <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
-                        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(content)}</td>
-                        <td>${escapeHtml(String(ttl))}</td>
-                        <td class="actions">
-                            <button class="btn btn-outline btn-sm" onclick="editRecordFromObj('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}', '${escapeJs(String(ttl))}')">编辑</button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}')">删除</button>
-                        </td>
-                    </tr>`;
+                    for (const line of currentRecords) {
+                        if (!line.trim() || line.startsWith(';') || line.startsWith('$')) continue;
+                        const parts = line.trim().split(/\s+/);
+                        if (parts.length < 3) continue;
+
+                        let name = '', ttl = '', type = '', content = '';
+                        let idx = 0;
+                        name = parts[idx++];
+
+                        if (idx < parts.length && /^\d+$/.test(parts[idx])) {
+                            ttl = parts[idx++];
+                        }
+                        if (idx < parts.length && parts[idx].toUpperCase() === 'IN') {
+                            idx++;
+                        }
+                        if (idx < parts.length && dnsTypes.includes(parts[idx].toUpperCase())) {
+                            type = parts[idx++].toUpperCase();
+                        }
+                        content = parts.slice(idx).join(' ');
+                        if (!type) continue;
+
+                        html += `<tr>
+                            <td><strong>${escapeHtml(name)}</strong></td>
+                            <td>${escapeHtml(ttl || '-')}</td>
+                            <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
+                            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(content)}</td>
+                            <td class="actions">
+                                <button class="btn btn-outline btn-sm" onclick="editRecordFromZone('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}', '${escapeJs(ttl)}')">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}')">删除</button>
+                            </td>
+                        </tr>`;
+                    }
+
+                    html += '</tbody></table></div>';
+                    container.innerHTML = html;
+                } else {
+                    // 对象数组
+                    let html = `<div class="table-wrapper"><table>
+                        <thead><tr>
+                            <th>名称</th>
+                            <th>类型</th>
+                            <th>内容</th>
+                            <th>TTL</th>
+                            <th>操作</th>
+                        </tr></thead><tbody>`;
+
+                    for (const r of currentRecords) {
+                        const name = r.name || r.host || '-';
+                        const type = r.type || '-';
+                        const content = r.content || r.value || r.data || r.rdata || '-';
+                        const ttl = r.ttl || '-';
+
+                        html += `<tr>
+                            <td><strong>${escapeHtml(name)}</strong></td>
+                            <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
+                            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(String(content))}</td>
+                            <td>${escapeHtml(String(ttl))}</td>
+                            <td class="actions">
+                                <button class="btn btn-outline btn-sm" onclick="editRecordFromObj('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(String(content))}', '${escapeJs(String(ttl))}')">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(String(content))}')">删除</button>
+                            </td>
+                        </tr>`;
+                    }
+
+                    html += '</tbody></table></div>';
+                    container.innerHTML = html;
                 }
-
-                html += '</tbody></table></div>';
-                container.innerHTML = html;
             } else {
-                container.innerHTML = '<div class="empty">数据格式未知</div>';
+                // 未知格式，显示原始 JSON
+                container.innerHTML = `<div class="card" style="margin:0;">
+                    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">未识别数据格式，原始数据：</p>
+                    <pre style="font-size:12px;background:var(--bg);padding:12px;border-radius:var(--radius);overflow-x:auto;white-space:pre-wrap;word-break:break-all;">${escapeHtml(JSON.stringify(currentRecords, null, 2))}</pre>
+                </div>`;
             }
         }
 
