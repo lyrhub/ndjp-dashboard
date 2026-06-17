@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDJP NET 管理面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --radius: 8px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header h1 span {
+            font-size: 24px;
+        }
+
+        .auth-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .auth-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+        }
+
+        .auth-status .dot.connected {
+            background: var(--success);
+        }
+
+        .auth-status span {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Auth Section */
+        .auth-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .auth-card h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .auth-form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-group input, .form-group select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--primary);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg);
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+        }
+
+        .tab {
+            padding: 10px 16px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab:hover {
+            color: var(--text);
+        }
+
+        /* Panels */
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        /* Card */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .card-header h3 {
+            font-size: 15px;
+        }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: var(--bg);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        .modal .form-group {
+            margin-bottom: 12px;
+        }
+
+        .modal .form-group input,
+        .modal .form-group select {
+            width: 100%;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            color: white;
+            animation: slideIn 0.3s ease;
+            max-width: 360px;
+        }
+
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--danger); }
+        .toast-info { background: var(--primary); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty state */
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Record actions */
+        .actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* IP display */
+        .ip-display {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--primary);
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* DDNS result */
+        .ddns-result {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: monospace;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .ddns-result.success {
+            border-color: var(--success);
+            background: #ecfdf5;
+        }
+
+        .ddns-result.error {
+            border-color: var(--danger);
+            background: #fef2f2;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .auth-form {
+                flex-direction: column;
+            }
+            .form-group input {
+                width: 100%;
+            }
+            .container {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1><span>🌐</span> NDJP NET 管理面板</h1>
+        <div class="auth-status">
+            <div class="dot" id="authDot"></div>
+            <span id="authText">未连接</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Auth Card -->
+        <div class="auth-card">
+            <h2>🔑 API 认证</h2>
+            <div class="auth-form">
+                <div class="form-group">
+                    <label>Bearer Token</label>
+                    <input type="password" id="apiToken" placeholder="输入 API Token" style="width:320px;" />
+                </div>
+                <button class="btn btn-primary" onclick="saveAuth()">保存并连接</button>
+                <button class="btn btn-outline" onclick="clearAuth()">清除</button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('domains')">子域名管理</button>
+            <button class="tab" onclick="switchTab('records')">DNS 记录</button>
+            <button class="tab" onclick="switchTab('ddns')">DDNS 更新</button>
+            <button class="tab" onclick="switchTab('tools')">工具</button>
+        </div>
+
+        <!-- Domains Panel -->
+        <div class="panel active" id="panel-domains">
+            <div class="card">
+                <div class="card-header">
+                    <h3>子域名列表</h3>
+                    <button class="btn btn-primary btn-sm" onclick="loadDomains()">刷新</button>
+                </div>
+                <div id="domainList">
+                    <div class="empty">请先配置 API 认证，然后点击刷新加载子域名列表</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Records Panel -->
+        <div class="panel" id="panel-records">
+            <div class="card">
+                <div class="card-header">
+                    <h3>DNS 记录管理</h3>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-primary btn-sm" onclick="showAddRecordModal()">添加记录</button>
+                        <button class="btn btn-outline btn-sm" onclick="loadRecords()">刷新</button>
+                    </div>
+                </div>
+
+                <!-- Domain selector -->
+                <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;">
+                    <div class="form-group">
+                        <label>选择子域名</label>
+                        <select id="recordDomainSelect" onchange="onRecordDomainChange()">
+                            <option value="">-- 请选择子域名 --</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="loadRecords()">查询</button>
+                </div>
+
+                <div id="recordList">
+                    <div class="empty">请先选择一个子域名</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DDNS Panel -->
+        <div class="panel" id="panel-ddns">
+            <div class="card">
+                <div class="card-header">
+                    <h3>DDNS 动态更新</h3>
+                </div>
+                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+                    通过 DDNS 接口自动将子域名指向您的当前 IP 地址。hostname 为完整 FQDN（如 foo.ndjp.net），
+                    myip 为可选参数（省略时使用请求来源 IP）。
+                </p>
+
+                <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;">
+                    <div class="form-group">
+                        <label>Hostname (FQDN)</label>
+                        <input type="text" id="ddnsHostname" placeholder="例: foo.ndjp.net" style="width:240px;" />
+                    </div>
+                    <div class="form-group">
+                        <label>MyIP (可选)</label>
+                        <input type="text" id="ddnsMyip" placeholder="留空使用当前 IP" style="width:180px;" />
+                    </div>
+                    <button class="btn btn-primary" onclick="executeDdnsUpdate()">更新 DDNS</button>
+                </div>
+
+                <div id="ddnsResult" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- Tools Panel -->
+        <div class="panel" id="panel-tools">
+            <!-- Health Check -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Health Check (Ping)</h3>
+                    <button class="btn btn-outline btn-sm" onclick="checkHealth()">检测</button>
+                </div>
+                <div id="healthResult">
+                    <div class="empty">点击「检测」查看 API 状态</div>
+                </div>
+            </div>
+
+            <!-- IP Check -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>客户端 IP 查询</h3>
+                    <button class="btn btn-outline btn-sm" onclick="checkIp()">查询</button>
+                </div>
+                <div id="ipResult">
+                    <div class="empty">点击「查询」获取当前 IP</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Record Modal -->
+    <div class="modal-overlay" id="recordModal">
+        <div class="modal">
+            <h3 id="recordModalTitle">添加 DNS 记录</h3>
+            <div class="form-group">
+                <label>记录名 (Name)</label>
+                <input type="text" id="recordName" placeholder="如: @, www, mail" />
+            </div>
+            <div class="form-group">
+                <label>记录类型</label>
+                <select id="recordType">
+                    <option value="A">A</option>
+                    <option value="AAAA">AAAA</option>
+                    <option value="CNAME">CNAME</option>
+                    <option value="MX">MX</option>
+                    <option value="TXT">TXT</option>
+                    <option value="ALIAS">ALIAS</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>内容 (Content)</label>
+                <input type="text" id="recordContent" placeholder="如: 1.2.3.4 或 example.com（多个用逗号分隔）" />
+            </div>
+            <div class="form-group">
+                <label>TTL (秒，最小 60，留空使用默认值)</label>
+                <input type="number" id="recordTTL" placeholder="如: 300" min="60" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeRecordModal()">取消</button>
+                <button class="btn btn-primary" id="recordSubmitBtn" onclick="submitRecord()">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Record Modal -->
+    <div class="modal-overlay" id="editRecordModal">
+        <div class="modal">
+            <h3>编辑 DNS 记录</h3>
+            <div class="form-group">
+                <label>记录名 (Name)</label>
+                <input type="text" id="editRecordName" placeholder="如: @, www, mail" />
+            </div>
+            <div class="form-group">
+                <label>记录类型</label>
+                <select id="editRecordType">
+                    <option value="A">A</option>
+                    <option value="AAAA">AAAA</option>
+                    <option value="CNAME">CNAME</option>
+                    <option value="MX">MX</option>
+                    <option value="TXT">TXT</option>
+                    <option value="ALIAS">ALIAS</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>内容 (Content)</label>
+                <input type="text" id="editRecordContent" placeholder="如: 1.2.3.4" />
+            </div>
+            <div class="form-group">
+                <label>TTL (秒，最小 60，留空使用默认值)</label>
+                <input type="number" id="editRecordTTL" placeholder="如: 300" min="60" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeEditRecordModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitEditRecord()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ===== State =====
+        const API_BASE = 'https://manage.ndjp.net/api';
+        let authToken = localStorage.getItem('ndjp_token') || '';
+        let currentDomains = [];
+        let currentRecords = [];
+        let editingRecord = null; // { type, name, content } for update context
+
+        // Init
+        document.getElementById('apiToken').value = authToken;
+        updateAuthStatus();
+
+        // ===== Auth =====
+        function saveAuth() {
+            authToken = document.getElementById('apiToken').value.trim();
+            if (!authToken) {
+                showToast('请填写 Bearer Token', 'error');
+                return;
+            }
+            localStorage.setItem('ndjp_token', authToken);
+            updateAuthStatus();
+            showToast('认证信息已保存', 'success');
+            loadDomains();
+        }
+
+        function clearAuth() {
+            authToken = '';
+            localStorage.removeItem('ndjp_token');
+            document.getElementById('apiToken').value = '';
+            updateAuthStatus();
+            showToast('认证信息已清除', 'info');
+        }
+
+        function updateAuthStatus() {
+            const dot = document.getElementById('authDot');
+            const text = document.getElementById('authText');
+            if (authToken) {
+                dot.classList.add('connected');
+                text.textContent = '已连接';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = '未连接';
+            }
+        }
+
+        // ===== API Helper =====
+        async function apiRequest(method, path, body = null, requireAuth = true) {
+            if (requireAuth && !authToken) {
+                showToast('请先配置 API 认证', 'error');
+                throw new Error('未认证');
+            }
+
+            const url = `${API_BASE}${path}`;
+            const headers = {};
+
+            if (requireAuth) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            if (body) {
+                headers['Content-Type'] = 'application/json';
+            }
+
+            const options = { method, headers };
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(url, options);
+
+            // DDNS update 返回纯文本
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('text/plain') || path.startsWith('/ddns/update') || path === '/check-ip') {
+                const text = await response.text();
+                if (!response.ok) {
+                    throw new Error(text || `HTTP ${response.status}`);
+                }
+                return text;
+            }
+
+            const data = await response.json();
+            if (!response.ok) {
+                const msg = data.message || data.error || `HTTP ${response.status}`;
+                throw new Error(msg);
+            }
+
+            return data;
+        }
+
+        // ===== Tabs =====
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`panel-${tab}`).classList.add('active');
+        }
+
+        function switchTabDirect(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            const tabMap = { 'domains': '子域名', 'records': 'DNS', 'ddns': 'DDNS', 'tools': '工具' };
+            document.querySelectorAll('.tab').forEach(t => {
+                if (t.textContent.includes(tabMap[tab] || tab)) {
+                    t.classList.add('active');
+                }
+            });
+            document.getElementById(`panel-${tab}`).classList.add('active');
+        }
+
+        // ===== Domains =====
+        async function loadDomains() {
+            const container = document.getElementById('domainList');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:8px;">加载中...</p></div>';
+
+            try {
+                const data = await apiRequest('GET', '/domains');
+                currentDomains = data.data || [];
+                updateDomainSelects();
+                renderDomains();
+            } catch (e) {
+                container.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        function renderDomains() {
+            const container = document.getElementById('domainList');
+            if (currentDomains.length === 0) {
+                container.innerHTML = '<div class="empty">暂无子域名</div>';
+                return;
+            }
+
+            let html = `<div class="table-wrapper"><table>
+                <thead><tr>
+                    <th>子域名</th>
+                    <th>操作</th>
+                </tr></thead><tbody>`;
+
+            for (const d of currentDomains) {
+                const name = typeof d === 'string' ? d : (d.subdomain || d.name || d.domain || JSON.stringify(d));
+                html += `<tr>
+                    <td><strong>${escapeHtml(name)}</strong></td>
+                    <td class="actions">
+                        <button class="btn btn-primary btn-sm" onclick="selectDomainForRecords('${escapeHtml(name)}')">管理记录</button>
+                    </td>
+                </tr>`;
+            }
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        function selectDomainForRecords(subdomain) {
+            document.getElementById('recordDomainSelect').value = subdomain;
+            switchTabDirect('records');
+            loadRecords();
+        }
+
+        function updateDomainSelects() {
+            const sel = document.getElementById('recordDomainSelect');
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="">-- 请选择子域名 --</option>';
+            for (const d of currentDomains) {
+                const name = typeof d === 'string' ? d : (d.subdomain || d.name || d.domain || '');
+                sel.innerHTML += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+            }
+            if (currentVal) sel.value = currentVal;
+        }
+
+        // ===== Records =====
+        function onRecordDomainChange() {
+            loadRecords();
+        }
+
+        async function loadRecords() {
+            const subdomain = document.getElementById('recordDomainSelect').value;
+            const container = document.getElementById('recordList');
+
+            if (!subdomain) {
+                container.innerHTML = '<div class="empty">请先选择一个子域名</div>';
+                return;
+            }
+
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:8px;">加载中...</p></div>';
+
+            try {
+                const data = await apiRequest('GET', `/domains/${encodeURIComponent(subdomain)}/records`);
+                currentRecords = data.data || [];
+                renderRecords(subdomain);
+            } catch (e) {
+                container.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
+            }
+        }
+
+        function renderRecords(subdomain) {
+            const container = document.getElementById('recordList');
+
+            // data 可能是字符串 (zone file) 或数组
+            if (typeof currentRecords === 'string') {
+                // Zone file 格式 - 解析展示
+                const lines = currentRecords.split('\n').filter(l => l.trim() && !l.startsWith(';'));
+                if (lines.length === 0) {
+                    container.innerHTML = '<div class="empty">暂无记录</div>';
+                    return;
+                }
+
+                let html = `<div class="table-wrapper"><table>
+                    <thead><tr>
+                        <th>名称</th>
+                        <th>TTL</th>
+                        <th>类型</th>
+                        <th>内容</th>
+                        <th>操作</th>
+                    </tr></thead><tbody>`;
+
+                for (const line of lines) {
+                    const parts = line.trim().split(/\s+/);
+                    if (parts.length >= 4) {
+                        const name = parts[0];
+                        const ttl = parts[1];
+                        const type = parts.length >= 5 ? parts[3] : parts[2];
+                        const content = parts.length >= 5 ? parts.slice(4).join(' ') : parts.slice(3).join(' ');
+                        const recordType = parts.length >= 5 ? parts[3] : parts[2];
+
+                        html += `<tr>
+                            <td><strong>${escapeHtml(name)}</strong></td>
+                            <td>${escapeHtml(ttl)}</td>
+                            <td><span class="badge badge-info">${escapeHtml(recordType)}</span></td>
+                            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(content)}</td>
+                            <td class="actions">
+                                <button class="btn btn-outline btn-sm" onclick="editRecordFromZone('${escapeJs(subdomain)}', '${escapeJs(recordType)}', '${escapeJs(name)}', '${escapeJs(content)}', '${escapeJs(ttl)}')">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(recordType)}', '${escapeJs(name)}', '${escapeJs(content)}')">删除</button>
+                            </td>
+                        </tr>`;
+                    }
+                }
+
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            } else if (Array.isArray(currentRecords)) {
+                if (currentRecords.length === 0) {
+                    container.innerHTML = '<div class="empty">暂无记录</div>';
+                    return;
+                }
+
+                let html = `<div class="table-wrapper"><table>
+                    <thead><tr>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>内容</th>
+                        <th>TTL</th>
+                        <th>操作</th>
+                    </tr></thead><tbody>`;
+
+                for (const r of currentRecords) {
+                    const name = r.name || r.host || '-';
+                    const type = r.type || '-';
+                    const content = r.content || r.value || r.data || '-';
+                    const ttl = r.ttl || '-';
+
+                    html += `<tr>
+                        <td><strong>${escapeHtml(name)}</strong></td>
+                        <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
+                        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(content)}</td>
+                        <td>${escapeHtml(String(ttl))}</td>
+                        <td class="actions">
+                            <button class="btn btn-outline btn-sm" onclick="editRecordFromObj('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}', '${escapeJs(String(ttl))}')">编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}')">删除</button>
+                        </td>
+                    </tr>`;
+                }
+
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="empty">数据格式未知</div>';
+            }
+        }
+
+        // ===== Add Record =====
+        function showAddRecordModal() {
+            const subdomain = document.getElementById('recordDomainSelect').value;
+            if (!subdomain) {
+                showToast('请先选择一个子域名', 'error');
+                return;
+            }
+            document.getElementById('recordModalTitle').textContent = '添加 DNS 记录';
+            document.getElementById('recordSubmitBtn').textContent = '添加';
+            document.getElementById('recordName').value = '';
+            document.getElementById('recordType').value = 'A';
+            document.getElementById('recordContent').value = '';
+            document.getElementById('recordTTL').value = '';
+            document.getElementById('recordModal').classList.add('show');
+        }
+
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.remove('show');
+        }
+
+        async function submitRecord() {
+            const subdomain = document.getElementById('recordDomainSelect').value;
+            const body = {
+                type: document.getElementById('recordType').value,
+                name: document.getElementById('recordName').value.trim(),
+                content: document.getElementById('recordContent').value.trim(),
+            };
+
+            const ttl = document.getElementById('recordTTL').value;
+            if (ttl) {
+                body.ttl = parseInt(ttl);
+            }
+
+            if (!body.name || !body.content) {
+                showToast('请填写记录名和内容', 'error');
+                return;
+            }
+
+            try {
+                await apiRequest('POST', `/domains/${encodeURIComponent(subdomain)}/records`, body);
+                showToast('记录添加成功', 'success');
+                closeRecordModal();
+                loadRecords();
+            } catch (e) {
+                showToast(`添加失败: ${e.message}`, 'error');
+            }
+        }
+
+        // ===== Edit Record =====
+        function editRecordFromZone(subdomain, type, name, content, ttl) {
+            editingRecord = { subdomain, type, name, content };
+            document.getElementById('editRecordName').value = name;
+            document.getElementById('editRecordType').value = type;
+            document.getElementById('editRecordContent').value = content;
+            document.getElementById('editRecordTTL').value = ttl && ttl !== '-' ? ttl : '';
+            document.getElementById('editRecordModal').classList.add('show');
+        }
+
+        function editRecordFromObj(subdomain, type, name, content, ttl) {
+            editRecordFromZone(subdomain, type, name, content, ttl);
+        }
+
+        function closeEditRecordModal() {
+            document.getElementById('editRecordModal').classList.remove('show');
+            editingRecord = null;
+        }
+
+        async function submitEditRecord() {
+            if (!editingRecord) return;
+
+            const subdomain = editingRecord.subdomain;
+            const body = {
+                type: document.getElementById('editRecordType').value,
+                name: document.getElementById('editRecordName').value.trim(),
+                content: document.getElementById('editRecordContent').value.trim(),
+            };
+
+            const ttl = document.getElementById('editRecordTTL').value;
+            if (ttl) {
+                body.ttl = parseInt(ttl);
+            }
+
+            if (!body.name || !body.content) {
+                showToast('请填写记录名和内容', 'error');
+                return;
+            }
+
+            try {
+                await apiRequest('PUT', `/domains/${encodeURIComponent(subdomain)}/records`, body);
+                showToast('记录更新成功', 'success');
+                closeEditRecordModal();
+                loadRecords();
+            } catch (e) {
+                showToast(`更新失败: ${e.message}`, 'error');
+            }
+        }
+
+        // ===== Delete Record =====
+        async function deleteRecord(subdomain, type, name, content) {
+            if (!confirm(`确定要删除记录 ${name} (${type}) = ${content} 吗？`)) return;
+
+            try {
+                let path = `/domains/${encodeURIComponent(subdomain)}/records?type=${encodeURIComponent(type)}&name=${encodeURIComponent(name)}`;
+                if (content && content !== '-') {
+                    path += `&content=${encodeURIComponent(content)}`;
+                }
+                await apiRequest('DELETE', path);
+                showToast('记录已删除', 'success');
+                loadRecords();
+            } catch (e) {
+                showToast(`删除失败: ${e.message}`, 'error');
+            }
+        }
+
+        // ===== DDNS Update =====
+        async function executeDdnsUpdate() {
+            const hostname = document.getElementById('ddnsHostname').value.trim();
+            const myip = document.getElementById('ddnsMyip').value.trim();
+            const resultDiv = document.getElementById('ddnsResult');
+
+            if (!hostname) {
+                showToast('请填写 Hostname', 'error');
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'ddns-result';
+            resultDiv.textContent = '更新中...';
+
+            try {
+                let path = `/ddns/update?hostname=${encodeURIComponent(hostname)}`;
+                if (myip) {
+                    path += `&myip=${encodeURIComponent(myip)}`;
+                }
+                const result = await apiRequest('GET', path);
+                resultDiv.className = 'ddns-result success';
+                resultDiv.textContent = result;
+                showToast('DDNS 更新成功', 'success');
+            } catch (e) {
+                resultDiv.className = 'ddns-result error';
+                resultDiv.textContent = `错误: ${e.message}`;
+                showToast(`DDNS 更新失败: ${e.message}`, 'error');
+            }
+        }
+
+        // ===== Tools =====
+        async function checkHealth() {
+            const container = document.getElementById('healthResult');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const data = await apiRequest('GET', '/ping', null, false);
+                if (data && data.status === 'ok') {
+                    container.innerHTML = '<div style="text-align:center;padding:20px;"><span class="badge badge-success" style="font-size:14px;padding:6px 16px;">✓ API 运行正常</span></div>';
+                } else {
+                    container.innerHTML = `<div style="text-align:center;padding:20px;"><span class="badge badge-warning" style="font-size:14px;padding:6px 16px;">响应: ${JSON.stringify(data)}</span></div>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<div style="text-align:center;padding:20px;"><span class="badge badge-danger" style="font-size:14px;padding:6px 16px;">✗ API 不可用: ${e.message}</span></div>`;
+            }
+        }
+
+        async function checkIp() {
+            const container = document.getElementById('ipResult');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const ip = await apiRequest('GET', '/check-ip');
+                container.innerHTML = `<div class="ip-display">${escapeHtml(ip.trim())}</div>`;
+            } catch (e) {
+                container.innerHTML = `<div class="empty">获取失败: ${e.message}</div>`;
+            }
+        }
+
+        // ===== Toast =====
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        // ===== Utilities =====
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeJs(str) {
+            return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+    </script>
+</body>
+</html>
