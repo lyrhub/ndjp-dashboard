@@ -989,32 +989,88 @@
                     html += '</tbody></table></div>';
                     container.innerHTML = html;
                 } else {
-                    // 对象数组
+                    // 对象数组 - 检测是否为 RRSet 格式
+                    // RRSet 格式: { name, type, ttl, records: [{content, disabled}] }
+                    const isRRSet = currentRecords[0].records && Array.isArray(currentRecords[0].records);
+
                     let html = `<div class="table-wrapper"><table>
                         <thead><tr>
                             <th>名称</th>
                             <th>类型</th>
                             <th>内容</th>
                             <th>TTL</th>
+                            <th>状态</th>
                             <th>操作</th>
                         </tr></thead><tbody>`;
 
-                    for (const r of currentRecords) {
-                        const name = r.name || r.host || '-';
-                        const type = r.type || '-';
-                        const content = r.content || r.value || r.data || r.rdata || '-';
-                        const ttl = r.ttl || '-';
+                    if (isRRSet) {
+                        // RRSet 格式：展开每个 record 为一行
+                        for (const rrset of currentRecords) {
+                            const name = rrset.name || '-';
+                            const type = rrset.type || '-';
+                            const ttl = rrset.ttl || '-';
+                            const records = rrset.records || [];
 
-                        html += `<tr>
-                            <td><strong>${escapeHtml(name)}</strong></td>
-                            <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
-                            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(String(content))}</td>
-                            <td>${escapeHtml(String(ttl))}</td>
-                            <td class="actions">
-                                <button class="btn btn-outline btn-sm" onclick="editRecordFromObj('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(String(content))}', '${escapeJs(String(ttl))}')">编辑</button>
-                                <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(String(content))}')">删除</button>
-                            </td>
-                        </tr>`;
+                            for (const rec of records) {
+                                const content = rec.content || '-';
+                                const disabled = rec.disabled;
+                                const statusBadge = disabled
+                                    ? '<span class="badge badge-warning">禁用</span>'
+                                    : '<span class="badge badge-success">启用</span>';
+
+                                html += `<tr>
+                                    <td><strong>${escapeHtml(name)}</strong></td>
+                                    <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
+                                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(content)}">${escapeHtml(content)}</td>
+                                    <td>${escapeHtml(String(ttl))}</td>
+                                    <td>${statusBadge}</td>
+                                    <td class="actions">
+                                        <button class="btn btn-outline btn-sm" onclick="editRecordFromObj('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}', '${escapeJs(String(ttl))}')">编辑</button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(content)}')">删除</button>
+                                    </td>
+                                </tr>`;
+                            }
+
+                            // 如果 records 为空，也显示一行
+                            if (records.length === 0) {
+                                html += `<tr>
+                                    <td><strong>${escapeHtml(name)}</strong></td>
+                                    <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
+                                    <td style="color:var(--text-secondary);">（无记录）</td>
+                                    <td>${escapeHtml(String(ttl))}</td>
+                                    <td>-</td>
+                                    <td class="actions">
+                                        <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '')">删除</button>
+                                    </td>
+                                </tr>`;
+                            }
+                        }
+                    } else {
+                        // 普通对象数组：直接读字段
+                        for (const r of currentRecords) {
+                            const name = r.name || r.host || '-';
+                            const type = r.type || '-';
+                            const content = r.content || r.value || r.data || r.rdata || '-';
+                            const ttl = r.ttl || '-';
+                            const disabled = r.disabled;
+                            const statusBadge = disabled === true
+                                ? '<span class="badge badge-warning">禁用</span>'
+                                : disabled === false
+                                    ? '<span class="badge badge-success">启用</span>'
+                                    : '-';
+
+                            html += `<tr>
+                                <td><strong>${escapeHtml(name)}</strong></td>
+                                <td><span class="badge badge-info">${escapeHtml(type)}</span></td>
+                                <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(String(content))}">${escapeHtml(String(content))}</td>
+                                <td>${escapeHtml(String(ttl))}</td>
+                                <td>${statusBadge}</td>
+                                <td class="actions">
+                                    <button class="btn btn-outline btn-sm" onclick="editRecordFromObj('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(String(content))}', '${escapeJs(String(ttl))}')">编辑</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeJs(subdomain)}', '${escapeJs(type)}', '${escapeJs(name)}', '${escapeJs(String(content))}')">删除</button>
+                                </td>
+                            </tr>`;
+                        }
                     }
 
                     html += '</tbody></table></div>';
